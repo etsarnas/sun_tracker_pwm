@@ -92,6 +92,7 @@ void setup()
 	//delay(1000);
 	//setServoPulse(TILT_SERVO, 2100);
 
+
 	setServoPulse(PAN_SERVO, 1700);
 	delay(400);
 	setServoPulse(PAN_SERVO, 1450);
@@ -107,41 +108,7 @@ void loop()
 	t.update();
 	t1.update();
 
-	//int tCycle = 0;                           // Clear cycle time
 
-	//tHigh = pulseIn(PWM_PIN, 0);       // Measure time high - swap pins to measure clockwise
-	//tLow = pulseIn(PWM_PIN, 1);        // Measure time low
-	//tCycle = tHigh + tLow;
-
-	//dc = (dutyScale * tHigh) / tCycle;        // Calculate duty cycle
-
-	//// This gives a theta increasing in the clockwise direction.
-
-	//theta = (unitsFC - 1) - ((dc - dcMin) * unitsFC) / (dcMax - dcMin + 1);  
-	
-	//int val = analogRead(PAN_SERVO_PIN); // Calculate angle
-
-	//theta = map(val, 0, 1023, 0, 360);
-
-	//if (targetAngle == 0) {
-
-	//	if (val < 9 || val == 1023 ) {
-	//		setServoPulse(PAN_SERVO, 1450);
-	//	}
-	//}
-	//else {
-	//	if (direction) {
-	//		if (theta >= targetAngle) {
-	//			setServoPulse(PAN_SERVO, 1450);
-	//		}
-	//	}
-	//	else {
-	//		
-	//		 if (targetAngle >= theta) {
-	//			setServoPulse(PAN_SERVO, 1450);
-	//		}
-	//	}
-	//}
 }
 
 void read_pin(void *context) {
