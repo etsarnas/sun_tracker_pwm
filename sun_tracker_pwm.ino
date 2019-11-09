@@ -1,7 +1,7 @@
 /*
-	Name:       sun_tracker_pwm.ino
-	Created:	4/12/2019 8:26:46 PM
-	Author:     Manny
+    Name:       sun_tracker_pwm.ino
+    Created:	4/12/2019 8:26:46 PM
+    Author:     Manny
 */
 
 
@@ -74,7 +74,8 @@ void setup()
 	//	rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 	//	// This line sets the RTC with an explicit date & time, for example to set
 	//	// January 21, 2014 at 3am you would call:
-	//rtc.adjust(DateTime(2019, 11, 6, 07, 11, 0));
+//	rtc.adjust(DateTime(2019, 11, 8, 16, 40, 0)); //sunset
+	rtc.adjust(DateTime(2019, 11, 9, 06, 53, 0)); //sunrise
 	//}
 
 
@@ -97,8 +98,9 @@ void setup()
 	delay(400);
 	setServoPulse(PAN_SERVO, 1450);
 	SetZero();
+	//atZero = true;
 
-	t.every(120000, calculate_sun_position, (void*)0); //1 min
+	t.every(30000, calculate_sun_position, (void*)0); //1 min
 	t1.every(60, read_pin, (void*)0);
 }
 
@@ -144,7 +146,6 @@ void MoveClockwise(int angle) {
 	setServoPulse(PAN_SERVO, 1800);
 }
 
-
 void MoveCounterclockwise(int angle) {
 	direction = 0;
 	targetAngle = angle;
@@ -167,7 +168,7 @@ void SetZero() {
 	atZero = true;
 	targetAngle = 0;
 	setServoPulse(PAN_SERVO, 1360);
-	setServoPulse(TILT_SERVO, 1200);
+	setServoPulse(TILT_SERVO, 1220); 
 }
 
 // you can use this function if you'd like to set the pulse length in seconds
@@ -231,21 +232,29 @@ void calculate_sun_position(void *context) {
 	sunrise = spa.sunrise;
 	sunset = spa.sunset;
 
+	double hrs = (double)hour + ((double)minute / 60) +((double)sec / 3600);
 	int cth = current_theta();
-	setServoPulse(TILT_SERVO, 1200 + ((int)elevation * 10));
+	
+	if ((int)elevation > 1) {
 
-	if (atZero) {
+		if (atZero) {
+			setServoPulse(PAN_SERVO, 1700);
+			delay(400);
+			cth = 0;
+			atZero = false;
+		}
 
-		setServoPulse(PAN_SERVO, 1700);
-		delay(400);
-		cth = 0;
-		atZero = false;
+		if ((int)elevation > 1 && (int)azimuth > cth) {
+			setServoPulse(TILT_SERVO, 1200 + ((int)elevation * 10));
+			MoveClockwise((int)azimuth);
+		}
 	}
 
-	if (elevation > 0 && (int)azimuth > cth) {
-		MoveClockwise((int)azimuth);
+	if (hrs > sunset) {
+		if (!atZero)
+			SetZero();
 	}
-
+	
 	printdata();
 
 }
@@ -271,7 +280,7 @@ void dstcalc() {
 	if (m == 3 || m == 11) {
 		ct = 0;
 		sundayrule = (m == 3 ? 2 : 1); //dst changes 2 nd sunday in march or 1st sunday in november
-		for (int k = 1; k <= (m == 3 ? 31 : 30); k++) {
+		for (int k = 1; k <= (m==3?31:30); k++) {
 			DateTime dt = DateTime(y, m, k, h, mi, sec);
 
 			if (dt.dayOfTheWeek() == 0) {
@@ -367,7 +376,7 @@ void printdata() {
 	Serial.print(sec);
 	Serial.println();
 	Serial.print("Time Zone = ");
-	Serial.print((dst - timezone), DEC);
+	Serial.print((dst-timezone), DEC);
 	Serial.println();
 	Serial.print("DST = ");
 	dst_in_ram = dst;// readRegister(REG_DST);
