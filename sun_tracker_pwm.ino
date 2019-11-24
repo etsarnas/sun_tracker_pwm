@@ -36,7 +36,7 @@ int sec;
 int doy;
 int dow;
 int dst;
-float latitude = 41.78528;    // 164 Hoyt St Brooklyn NY
+float latitude = 40.68543;    // 164 Hoyt St Brooklyn NY
 float longitude = -73.98861;
 float elevation;
 float azimuth;
@@ -53,9 +53,9 @@ int dcMax = 971;                            // Maximum duty cycle
 volatile int angle, targetAngle;              // Global shared variables
 volatile int Kp = 1;
 
-volatile bool atZero = false;
+bool atZero;
 volatile bool direction = false; //1 cw 0 ccw
-
+volatile bool stopped = true;
 
 void setup()
 {
@@ -63,6 +63,10 @@ void setup()
 	rtc.begin();
 
 	// rtc.adjust(DateTime(__DATE__,__TIME__));
+ //  rtc.adjust(DateTime(2019, 11, 8, 16, 40, 0)); //sunset
+//	 rtc.adjust(DateTime(2019, 11, 9, 06, 53, 0)); //sunrise
+
+
 	 //getRTC();
 	 //printdata();
 
@@ -73,9 +77,9 @@ void setup()
 	//	// following line sets the RTC to the date & time this sketch was compiled
 	//	rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
 	//	// This line sets the RTC with an explicit date & time, for example to set
-	//	// January 21, 2014 at 3am you would call:
-//	rtc.adjust(DateTime(2019, 11, 8, 16, 40, 0)); //sunset
-	rtc.adjust(DateTime(2019, 11, 9, 06, 53, 0)); //sunrise
+//	//	// January 21, 2014 at 3am you would call:
+////	rtc.adjust(DateTime(2019, 11, 8, 16, 40, 0)); //sunset
+//	rtc.adjust(DateTime(2019, 11, 9, 06, 53, 0)); //sunrise
 	//}
 
 
@@ -100,7 +104,7 @@ void setup()
 	SetZero();
 	//atZero = true;
 
-	t.every(30000, calculate_sun_position, (void*)0); //1 min
+	t.every(120000, calculate_sun_position, (void*)0); //1 min
 	t1.every(60, read_pin, (void*)0);
 }
 
@@ -119,22 +123,26 @@ void read_pin(void *context) {
 
 	theta = map(val, 0, 1023, 0, 360);
 
-	if (targetAngle == 0) {
+	if (targetAngle == 0 && !stopped) {
 
 		if (val < 9 || val == 1023) {
 			setServoPulse(PAN_SERVO, 1450);
+			stopped = true;
 		}
 	}
 	else {
-		if (direction) {
+		if (direction && !stopped) {
+			
 			if (theta >= targetAngle) {
 				setServoPulse(PAN_SERVO, 1450);
+				stopped = true;
 			}
 		}
 		else {
 
 			if (targetAngle >= theta) {
 				setServoPulse(PAN_SERVO, 1450);
+				stopped = true;
 			}
 		}
 	}
@@ -143,12 +151,14 @@ void read_pin(void *context) {
 void MoveClockwise(int angle) {
 	direction = 1;
 	targetAngle = angle;
-	setServoPulse(PAN_SERVO, 1800);
+	stopped = false;
+	setServoPulse(PAN_SERVO, 1700);
 }
 
 void MoveCounterclockwise(int angle) {
 	direction = 0;
 	targetAngle = angle;
+	stopped = false;
 	setServoPulse(PAN_SERVO, 1370);
 }
 
@@ -167,6 +177,7 @@ void SetZero() {
 
 	atZero = true;
 	targetAngle = 0;
+	stopped = false;
 	setServoPulse(PAN_SERVO, 1360);
 	setServoPulse(TILT_SERVO, 1220); 
 }
@@ -244,7 +255,7 @@ void calculate_sun_position(void *context) {
 			atZero = false;
 		}
 
-		if ((int)elevation > 1 && (int)azimuth > cth) {
+		if ((int)azimuth > cth) {
 			setServoPulse(TILT_SERVO, 1200 + ((int)elevation * 10));
 			MoveClockwise((int)azimuth);
 		}
@@ -252,7 +263,10 @@ void calculate_sun_position(void *context) {
 
 	if (hrs > sunset) {
 		if (!atZero)
+		{
 			SetZero();
+			atZero = true;
+		}
 	}
 	
 	printdata();
@@ -278,13 +292,14 @@ void dstcalc() {
 	int sec = tmp.second();
 
 	if (m == 3 || m == 11) {
+		dst = (m == 11 ? 1 : 0);
 		ct = 0;
 		sundayrule = (m == 3 ? 2 : 1); //dst changes 2 nd sunday in march or 1st sunday in november
 		for (int k = 1; k <= (m==3?31:30); k++) {
 			DateTime dt = DateTime(y, m, k, h, mi, sec);
 
 			if (dt.dayOfTheWeek() == 0) {
-				if (ct++ == sundayrule && tmp.day() >= k) dst = 1;
+				if (++ct == sundayrule && tmp.day() >= k) dst = (m == 11 ? 0 : 1);
 			}
 		}
 	}
@@ -306,7 +321,6 @@ void getRTC() {
 	dow = now.dayOfTheWeek();
 
 	dstcalc();
-
 }
 
 void printdata() {
